@@ -26,6 +26,12 @@ public class Chart implements Serializable {
     private String goal;
 
     /**
+     * 图表名称
+     */
+    @TableField(value = "name")
+    private String name;
+
+    /**
      * 图表数据
      */
     @TableField(value = "chartData")

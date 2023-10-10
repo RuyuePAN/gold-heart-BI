@@ -23,6 +23,17 @@ export default [
     ],
   },
   {
+    path: '/user',
+    layout: false,
+    routes: [
+      {
+        name: 'register',
+        path: '/user/register',
+        component: './User/Register',
+      },
+    ],
+  },
+  {
     path: '/welcome',
     name: 'welcome',
     icon: 'smile',
