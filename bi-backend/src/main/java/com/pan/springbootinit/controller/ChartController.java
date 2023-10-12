@@ -1,7 +1,8 @@
 package com.pan.springbootinit.controller;
-import java.io.File;
 import java.time.LocalDateTime;
 
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
@@ -11,32 +12,28 @@ import com.pan.springbootinit.common.DeleteRequest;
 import com.pan.springbootinit.common.ErrorCode;
 import com.pan.springbootinit.common.ResultUtils;
 import com.pan.springbootinit.constant.CommonConstant;
-import com.pan.springbootinit.constant.FileConstant;
 import com.pan.springbootinit.constant.UserConstant;
 import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.exception.ThrowUtils;
+import com.pan.springbootinit.manager.AiManager;
 import com.pan.springbootinit.model.dto.chart.*;
-import com.pan.springbootinit.model.dto.file.UploadFileRequest;
 import com.pan.springbootinit.model.entity.Chart;
 import com.pan.springbootinit.model.entity.User;
-import com.pan.springbootinit.model.enums.FileUploadBizEnum;
 import com.pan.springbootinit.service.ChartService;
 import com.pan.springbootinit.service.UserService;
 import com.pan.springbootinit.utils.Excel2Csv;
 import com.pan.springbootinit.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.web.bind.EscapedErrors;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-
-import static com.pan.springbootinit.utils.Excel2Csv.excelToCsv;
+import java.util.LinkedList;
+import java.util.List;
 
 /**
  * 帖子接口
@@ -52,6 +49,8 @@ public class ChartController {
 
     @Resource
     private UserService userService;
+    @Resource
+    private AiManager aiManager;
 
     private final static Gson GSON = new Gson();
 
@@ -263,51 +262,77 @@ public class ChartController {
      * @return
      */
     @PostMapping("/gen")
-    public BaseResponse<String> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
+    public BaseResponse<BiResponse> genChartByAi(@RequestPart("file") MultipartFile multipartFile,
                                              GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String name = genChartByAiRequest.getName();
         String goal = genChartByAiRequest.getGoal();
         String chartType = genChartByAiRequest.getChartType();
+        User loginUser = userService.getLoginUser(request);
 
         // 参数校验
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标不能为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "图表名称过长");
 
-        // 用户输入
-        StringBuilder userInput = new StringBuilder();
-        // 输入预设
-        userInput.append("你是一个数据分析师，接下来我会给你我的分析目标和原始数据，请告诉我分析结论").append("\n");
-        userInput.append("分析目标:").append(goal).append("\n");
-
         // 压缩后的数据
-        String result = Excel2Csv.excelToCsv(multipartFile);
-        userInput.append("数据：").append(result);
+        String data = Excel2Csv.excelToCsv(multipartFile);
+        String chatMessage = buildChatMessage(goal, data, chartType);
+        String res = aiManager.doChat(chatMessage);
+        System.out.println("返回的结果是：");
+        System.out.println(res);
+        BiResponse biResponse = getChatResult(res);
 
-        return ResultUtils.success(userInput.toString());
+        // 将生成的图表结果存储到数据库中
+        Chart chart = new Chart();
+        chart.setGoal(goal);
+        chart.setName(name);
+        chart.setChartData(data);
+        chart.setChartType(chartType);
+        chart.setGenChart(biResponse.getGenChart());
+        chart.setGenResult(biResponse.getGenResult());
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = chartService.save(chart);
 
+        biResponse.setChartId(chart.getId());
+        return ResultUtils.success(biResponse);
     }
-        // 读取用户上传的文件
-//        User loginUser = userService.getLoginUser(request);
-//        // 文件目录：根据业务、用户来划分
-//        String uuid = RandomStringUtils.randomAlphanumeric(8);
-//        String filename = uuid + "-" + multipartFile.getOriginalFilename();
-//        File file = null;
-//        try {
-//
-//            // 返回可访问地址
-//            return ResultUtils.success("");
-//        } catch (Exception e) {
-////            log.error("file upload error, filepath = " + filepath, e);
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-//        } finally {
-//            if (file != null) {
-//                // 删除临时文件
-//                boolean delete = file.delete();
-//                if (!delete) {
-////                    log.error("file delete error, filepath = {}", filepath);
-//                }
-//            }
-//        }
-//    }
 
+    /**
+     * 拆分接口返回的结果 BiResponse
+     * @return
+     */
+    private BiResponse getChatResult(String res) {
+        String[] splits = res.split("```");
+        BiResponse biResponse = new BiResponse();
+        // biResponse.setGenChart("option = " + splits[1].substring(splits[1].indexOf("{")));
+        biResponse.setGenChart(splits[1].substring(splits[1].indexOf("{")));
+        if (splits[2].contains("}"))   biResponse.setGenResult(splits[2].substring(splits[2].indexOf("}") + 3));
+        else biResponse.setGenResult(splits[2]);
+        return biResponse;
+    }
+
+    private String buildChatMessage(String goal, String data, String chartType) {
+        JSONObject json = new JSONObject();
+
+        // 添加"messages"字段，并设置其值为一个JSON数组
+        JSONArray messages = new JSONArray();
+        json.put("messages", messages);
+
+        // 创建一个JSONObject，表示第一条消息
+        JSONObject message1 = new JSONObject();
+
+        // 设置"role"字段为"user"
+        message1.put("role", "user");
+
+        // 设置"content"字段为所需的内容字符串
+        // String content = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容:\n分析需求:\n{用户数量趋势}\n原始数据:\n{日期,用户数量\\n2023.10.10,10\\n2023.10.11,10\\n2023.10.12,10\\n2023.10.13,50\\n2023.10.14,60\\n2023.10.15,10\\n2023.10.16,5\\n2023.10.17,1010\\n2023.10.18,955\\n2023.10.19,536\\n}\n请根据这两部分内容，帮我按照以下格式生成内容(此外不要输出任何多余的开头、结尾、注释)\n{合理的使用前端 Echarts V5 的option 配置对象js代码将数据绘制成散点图}\n{图表的描述及明确的数据分析结论，不少于500字}";
+        // String content = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容:\n分析需求:\n{" + goal + "}\n原始数据:\n{" + data + "}\n请根据这两部分内容，帮我按照以下格式生成内容(此外不要输出任何多余的开头、结尾、注释)\n：【【【\n{将数据绘制成"+ chartType +"的前端 Echarts V5 的option 配置对象js代码}【【【\n{看图说话及明确的数据分析结论，不少于500字}";
+        String content = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容:\n分析需求:\n{" + goal + "}\n原始数据:\n{" + data + "}\n请根据这两部分内容，帮我按照以下格式生成内容(此外不要输出任何多余的开头、结尾、注释)：\n{将数据绘制成"+ chartType +"的前端 Echarts V5 的option 配置对象json代码}\n{看图说话及明确的数据分析结论，不少于500字}";
+        message1.put("content", content);
+
+        // 将message对象添加到messages数组中
+        messages.add(message1);
+        // 输出JSON字符串
+        System.out.println(json.toStringPretty());
+        return json.toString();
+    }
 }
