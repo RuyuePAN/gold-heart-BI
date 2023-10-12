@@ -16,9 +16,9 @@ import {Alert, message, Tabs} from 'antd';
 import Settings from '../../../../config/defaultSettings';
 import React, {useEffect, useState} from 'react';
 import {flushSync} from 'react-dom';
-import {listChartVOByPageUsingPOST} from "@/services/mybi/chartController";
+import {listChartByPageUsingPOST} from "@/services/mybi/chartController";
 import {Link} from "umi";
-import {getLoginUserUsingGET, userLoginUsingPOST, userLogoutUsingPOST} from "@/services/mybi/userController";
+import {getLoginUserUsingGET, userLoginUsingPOST} from "@/services/mybi/userController";
 
 const ActionIcons = () => {
   const langClassName = useEmotionCss(({token}) => {
@@ -60,7 +60,7 @@ const LoginMessage: React.FC<{
 };
 
 const Login: React.FC = () => {
-  const [userLoginState,] = useState<API.LoginResult>({});
+  const [userLoginState] = useState<API.loginUserParams>({});
   const [type, setType] = useState<string>('account');
   const {setInitialState} = useModel('@@initialState');
 
@@ -79,7 +79,7 @@ const Login: React.FC = () => {
   const intl = useIntl();
 
   useEffect(() => {
-    listChartVOByPageUsingPOST({}).then(res => {
+    listChartByPageUsingPOST({}).then(res => {
       console.error('res = ' + res)
     })
   })

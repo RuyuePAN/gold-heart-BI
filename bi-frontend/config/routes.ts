@@ -22,16 +22,12 @@ export default [
       },
     ],
   },
+  // 将主页重定向到添加页面
   {
-    path: '/user',
-    layout: false,
-    routes: [
-      {
-        name: 'register',
-        path: '/user/register',
-        component: './User/Register',
-      },
-    ],
+    path: "/", redirect: "/add_chart"
+  },
+  {
+    path: '/add_chart', name: "智能分析", icon: 'barChart', component: "./AddChart"
   },
   {
     path: '/welcome',
@@ -55,12 +51,6 @@ export default [
         component: './Admin',
       },
     ],
-  },
-  {
-    name: 'list.table-list',
-    icon: 'table',
-    path: '/list',
-    component: './TableList',
   },
   {
     path: '/',

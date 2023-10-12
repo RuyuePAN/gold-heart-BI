@@ -6,7 +6,7 @@ import React from 'react';
 const Footer: React.FC = () => {
   const intl = useIntl();
   const defaultMessage = intl.formatMessage({
-    id: 'app.copyright.produced',
+    id: '福特大老爷',
     defaultMessage: '福特大老爷出品',
   });
 
