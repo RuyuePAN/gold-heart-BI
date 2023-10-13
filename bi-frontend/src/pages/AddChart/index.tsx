@@ -12,7 +12,6 @@ import {genChartByAiUsingPOST} from '@/services/mybi/chartController';
 import ReactECharts from 'echarts-for-react';
 import Row from 'antd/lib/row';
 import Spin from 'antd/lib/spin';
-import {sub} from "zrender/lib/core/vector";
 
 /**
  * 添加图表页面

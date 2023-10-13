@@ -84,7 +84,7 @@ const Login: React.FC = () => {
     })
   })
   /**
-   * 登陆成功后获取用户嘻嘻
+   * 登陆成功后将用户信息设置到全局状态里
    */
   const fetchUserInfo = async () => {
     const userInfo = await getLoginUserUsingGET();

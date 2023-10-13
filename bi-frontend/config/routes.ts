@@ -30,6 +30,9 @@ export default [
     path: '/add_chart', name: "智能分析", icon: 'barChart', component: "./AddChart"
   },
   {
+    path: '/my_chart', name: "我的图表", icon: 'pieChart', component: "./MyChart"
+  },
+  {
     path: '/welcome',
     name: 'welcome',
     icon: 'smile',
