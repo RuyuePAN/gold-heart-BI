@@ -1,6 +1,7 @@
 package com.pan.springbootinit.controller;
 import java.time.LocalDateTime;
 
+import cn.hutool.core.io.FileUtil;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
@@ -16,6 +17,7 @@ import com.pan.springbootinit.constant.UserConstant;
 import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.exception.ThrowUtils;
 import com.pan.springbootinit.manager.AiManager;
+import com.pan.springbootinit.manager.RedisLimiterManager;
 import com.pan.springbootinit.model.dto.chart.*;
 import com.pan.springbootinit.model.entity.Chart;
 import com.pan.springbootinit.model.entity.User;
@@ -32,6 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -51,6 +54,9 @@ public class ChartController {
     private UserService userService;
     @Resource
     private AiManager aiManager;
+
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     private final static Gson GSON = new Gson();
 
@@ -272,6 +278,22 @@ public class ChartController {
         // 参数校验
         ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标不能为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "图表名称过长");
+
+        // 校验文件
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        final long ONE_MB = 1 * 1024 * 1024;
+        // 校验文件大小
+        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件过大，文件超过1M");
+
+        // 校验文件后缀 aaa.xlsx（无法完全保障安全性）
+        String suffix = FileUtil.getSuffix(originalFilename);
+        final List<String> validFileSuffixList = Arrays.asList("xlsx");
+
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件非法");
+
+        // 限流判断（每个用户针对该方法有一个限流器）
+        redisLimiterManager.doRateLimiter("genChartByAi_" + String.valueOf(loginUser.getId()));
 
         // 压缩后的数据
         String data = Excel2Csv.excelToCsv(multipartFile);

@@ -1,22 +1,19 @@
 package com.pan.springbootinit.api;
 
 
-import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.hutool.json.ObjectMapper;
 import com.pan.springbootinit.common.ErrorCode;
 import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.model.dto.chart.BceAccessTokenResponse;
 import com.pan.springbootinit.model.dto.chart.BceResponse;
-import com.pan.springbootinit.utils.AppProperties;
 import com.squareup.okhttp.*;
-import org.apache.commons.lang3.ObjectUtils;
+import lombok.Data;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Service;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.Resource;
 import java.io.IOException;
-import java.security.cert.CertPathBuilderException;
+import java.util.concurrent.TimeUnit;
 
 
 /**
@@ -25,27 +22,28 @@ import java.security.cert.CertPathBuilderException;
  * @Author Pan
  * @DATE 2023/10/11 11:54
  */
-@Service
+@Configuration
+@ConfigurationProperties(prefix="pan.bce")
+@Data
 public class BceClient {
+    private String apiKey;
+    private String secretKey;
+    private String accessToken;
+
     static final OkHttpClient HTTP_CLIENT = new OkHttpClient();
-    @Resource
-    private AppProperties appProperties;
-
-    private String accessToken = getAccessToken();
-
-    private final String api_key = "";
-    private final String secret_key = "";
 
     public String getAccessToken() {
+        HTTP_CLIENT.setReadTimeout(50, TimeUnit.SECONDS);
+
         MediaType mediaType = MediaType.parse("application/json");
         RequestBody body = RequestBody.create(mediaType, "");
         StringBuilder url = new StringBuilder();
         url.append("https://aip.baidubce.com/oauth/2.0/token?client_id=");
         //url.append(appProperties.getBceProvider().getApiKey());
-        url.append(api_key);
+        url.append(apiKey);
         url.append("&client_secret=");
         //url.append(appProperties.getBceProvider().getSecretKey());
-        url.append(secret_key);
+        url.append(secretKey);
         url.append("&grant_type=client_credentials");
         Request request = new Request.Builder()
                 .url(url.toString())
@@ -84,8 +82,6 @@ public class BceClient {
                 .addHeader("Content-Type", "application/json")
                 .build();
         Response response = null;
-        System.setProperty("sun.net.client.defaultConnectTimeout", String
-                .valueOf(100000));// （单位：毫秒）
         try {
             response = HTTP_CLIENT.newCall(request).execute();
             BceResponse bceResponse = JSONUtil.toBean(response.body().string(), BceResponse.class);
