@@ -74,6 +74,17 @@ public class Chart implements Serializable {
     private LocalDateTime updateTime;
 
     /**
+     * 图表生成状态
+     */
+    @TableField(value = "status")
+    private String status;
+
+    /**
+     * 执行信息
+     */
+    private String execMessage;
+
+    /**
      * 是否删除
      */
     @TableField(value = "isDelete")

@@ -29,8 +29,8 @@ public class RedisLimiterManager {
         // 创建一个名为 key 的限流器
         RRateLimiter reteLimiter = redissonClient.getRateLimiter(key);
         // 设置限流器的限流规则
-        reteLimiter.trySetRate(RateType.OVERALL, 5, 1, RateIntervalUnit.DAYS);
-        // reteLimiter.trySetRate(RateType.OVERALL, 2, 1, RateIntervalUnit.SECONDS); // 测试用
+        // reteLimiter.trySetRate(RateType.OVERALL, 5, 1, RateIntervalUnit.DAYS);
+        reteLimiter.trySetRate(RateType.OVERALL, 2, 1, RateIntervalUnit.SECONDS); // 测试用
 
         // 每当一个操作来了之后，就去请求 1 个令牌（使用几个令牌可以根据用户等级来定，会员消耗的比较少，这样次数就多）
         boolean canOp = reteLimiter.tryAcquire(1);

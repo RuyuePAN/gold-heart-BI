@@ -37,6 +37,8 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 帖子接口
@@ -57,6 +59,9 @@ public class ChartController {
 
     @Resource
     private RedisLimiterManager redisLimiterManager;
+
+    @Resource
+    private ThreadPoolExecutor threadPoolExecutor;
 
     private final static Gson GSON = new Gson();
 
@@ -260,7 +265,7 @@ public class ChartController {
     }
 
     /**
-     * 智能分析文件上传
+     * 智能分析文件上传（同步）
      *
      * @param multipartFile
      * @param
@@ -301,7 +306,12 @@ public class ChartController {
         String res = aiManager.doChat(chatMessage);
         System.out.println("返回的结果是：");
         System.out.println(res);
-        BiResponse biResponse = getChatResult(res);
+        BiResponse biResponse = null;
+        try {
+            biResponse = getChatResult(res);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI响应错误");
+        }
 
         // 将生成的图表结果存储到数据库中
         Chart chart = new Chart();
@@ -319,16 +329,123 @@ public class ChartController {
     }
 
     /**
-     * 拆分接口返回的结果 BiResponse
+     * 智能分析文件上传（异步）
+     *
+     * @param multipartFile
+     * @param
+     * @param request
      * @return
      */
-    private BiResponse getChatResult(String res) {
+    @PostMapping("/gen/async")
+    public BaseResponse<BiResponse> genChartByAiAsync(@RequestPart("file") MultipartFile multipartFile,
+                                                 GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        String chartType = genChartByAiRequest.getChartType();
+        User loginUser = userService.getLoginUser(request);
+
+        // 参数校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标不能为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100, ErrorCode.PARAMS_ERROR, "图表名称过长");
+
+        // 校验文件
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        final long ONE_MB = 1 * 1024 * 1024;
+        // 校验文件大小
+        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件过大，文件超过1M");
+
+        // 校验文件后缀 aaa.xlsx（无法完全保障安全性）
+        String suffix = FileUtil.getSuffix(originalFilename);
+        final List<String> validFileSuffixList = Arrays.asList("xlsx", "xls");
+
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.PARAMS_ERROR, "文件非法");
+
+        // 限流判断（每个用户针对该方法有一个限流器）
+        redisLimiterManager.doRateLimiter("genChartByAi_" + String.valueOf(loginUser.getId()));
+
+        // 压缩后的数据
+        String data = Excel2Csv.excelToCsv(multipartFile);
+        String chatMessage = buildChatMessage(goal, data, chartType);
+
+        // 先将图表存储到数据库中
+        Chart chart = new Chart();
+        chart.setGoal(goal);
+        chart.setName(name);
+        chart.setChartData(data);
+        chart.setChartType(chartType);
+        chart.setStatus("wait");            // TODO：设置为枚举值
+        //        chart.setGenChart(biResponse.getGenChart());
+        //        chart.setGenResult(biResponse.getGenResult());
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = chartService.save(chart);
+        if (!saveResult) {
+            handleChartUpdateError(chart.getId(), "保存图表状态失败");
+        }
+
+        // 将调用AI修改为提交任务
+        // TODO 处理任务满了以后的异常
+        CompletableFuture.runAsync(() -> {
+            // 先修改图表任务状态为执行中，减少重复执行的风险，同时让用户知道执行的状态
+            Chart updateChart = new Chart();
+            updateChart.setId(chart.getId());
+            updateChart.setStatus("running");
+            boolean b = chartService.updateById(updateChart);
+            // 如果图表状态更改失败
+            if(!b) {
+                handleChartUpdateError(chart.getId(), "更新图表状态执行中失败");
+            }
+            String res = aiManager.doChat(chatMessage);
+            updateChart.setId(chart.getId());
+            updateChart.setStatus("succeed");
+            System.out.println("返回的结果是：");
+            System.out.println(res);
+            BiResponse biResponse = null;
+            try {
+                biResponse = getChatResult(res);
+            } catch (Exception e) {
+                handleChartUpdateError(chart.getId(), "AI响应错误");
+            }
+            updateChart.setChartData(biResponse.getGenChart());
+            updateChart.setGenChart(biResponse.getGenResult());
+            boolean updateResult = chartService.updateById(updateChart);
+            if (!updateResult) {
+                handleChartUpdateError(chart.getId(), "更新图表状态失败");
+            }
+        }, threadPoolExecutor);
+        BiResponse biResponse = new BiResponse();
+        biResponse.setChartId(chart.getId());
+        return ResultUtils.success(biResponse);
+    }
+
+
+    /**
+     * 异常回调
+     *
+     */
+    private void handleChartUpdateError(long chartId, String execMessage) {
+        Chart updateChartResult = new Chart();
+        updateChartResult.setId(chartId);
+        updateChartResult.setExecMessage(execMessage);
+        updateChartResult.setStatus("failed");
+        boolean updateResult = chartService.updateById(updateChartResult);
+        if (!updateResult) {
+            log.error("更新图表失败状态失败" + chartId + ", " + execMessage);
+        }
+    }
+
+    /**
+     * 拆分接口返回的结果 BiResponse
+     * TODO 增加人设
+     * @return
+     */
+    private BiResponse getChatResult(String res) throws Exception{
         String[] splits = res.split("```");
         BiResponse biResponse = new BiResponse();
-        // biResponse.setGenChart("option = " + splits[1].substring(splits[1].indexOf("{")));
-        biResponse.setGenChart(splits[1].substring(splits[1].indexOf("{")));
-        if (splits[2].contains("}"))   biResponse.setGenResult(splits[2].substring(splits[2].indexOf("}") + 3));
-        else biResponse.setGenResult(splits[2]);
+            // biResponse.setGenChart("option = " + splits[1].substring(splits[1].indexOf("{")));
+            biResponse.setGenChart(splits[1].substring(splits[1].indexOf("{")));
+            if (splits[2].contains("}"))   biResponse.setGenResult(splits[2].substring(splits[2].indexOf("}") + 3));
+            else biResponse.setGenResult(splits[2]);
         return biResponse;
     }
 
