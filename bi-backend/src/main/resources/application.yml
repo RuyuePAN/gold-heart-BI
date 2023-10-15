@@ -29,6 +29,12 @@ spring:
     host: ${SERVER_HOST}
     port: ${SERVER_REDIS_PORT}
     timeout: 5000
+  # RabbitMQ配置
+  rabbitmq:
+    host: localhost
+    port: 5672
+    password: guest
+    username: guest
   # 文件上传
   servlet:
     multipart:
