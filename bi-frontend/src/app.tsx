@@ -6,7 +6,7 @@ import { history, Link } from '@umijs/max';
 import { errorConfig } from './requestConfig';
 import React from 'react';
 import {getLoginUserUsingGET} from "@/services/mybi/userController";
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === 'production';
 const loginPath = '/user/login';
 
 /**
@@ -127,7 +127,8 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request = {
-  baseURL: "http://localhost:8101",
+  //baseURL: "http://localhost:8101",
+  baseURL: "http://www.bi.ruyuepan.asia:8102",
   withCredentials: true,  // 带上Cookie
   ...errorConfig,
 };
