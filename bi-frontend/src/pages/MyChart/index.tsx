@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {UploadOutlined} from '@ant-design/icons';
+import {DeleteOutlined, SearchOutlined, UploadOutlined} from '@ant-design/icons';
 import {
   Button, Card, Col, Divider,
   Form, Input, message,
@@ -7,9 +7,9 @@ import {
   Space,
   Upload,
   List,
-  Avatar, Result
+  Avatar, Result, Modal
 } from 'antd';
-import {genChartByAiUsingPOST, listMyChartByPageUsingPOST} from '@/services/mybi/chartController';
+import {deleteChartUsingPOST, genChartByAiUsingPOST, listMyChartByPageUsingPOST} from '@/services/mybi/chartController';
 import ReactECharts from 'echarts-for-react';
 import Row from 'antd/lib/row';
 import Spin from 'antd/lib/spin';
@@ -17,6 +17,7 @@ import {getInitialState} from "@/app";
 import {useModel} from "@umijs/max";
 import Search from "antd/es/input/Search";
 import {values} from "lodash";
+import Tooltip from 'antd/lib/tooltip';
 
 /**
  * 我的图表页面
@@ -30,6 +31,8 @@ const MyChartPage: React.FC = () => {
     sortOrder: 'desc'
   }
   const {initialState} = useModel('@@initialState');
+  // 是否显示对话框
+  const [isModalOpen, setIsModalOpen] = useState(false);
   // 从initialState中取currentUser
   const {currentUser} = initialState ?? {};
   const [searchParams, setSearchParams] = useState<API.ChartQueryRequest>({...initSearchParams})
@@ -38,6 +41,18 @@ const MyChartPage: React.FC = () => {
   // 默认情况下为 0
   const [total, setTotal] = useState<number>(0)
 
+  // 对话框函数——显示对话框
+  const showModal = () => {
+    setIsModalOpen(true);
+  };
+  // 对话框函数——处理确认事件
+  const handleOk = () => {
+    setIsModalOpen(false);
+  };
+  // 对话框函数——处理取消事件
+  const handleCancel = () => {
+    setIsModalOpen(false);
+  };
   // 定义一个获取数据的函数
   const loadData = async () => {
     setLoading(true);
@@ -131,6 +146,7 @@ const MyChartPage: React.FC = () => {
                   item.status === 'succeed' && <>
                     <div style={{ marginBottom: 16 }} />
                     <p>{'分析目标：' + item.goal}</p>
+                    <p>{'分析结论：' + item.genResult}</p>
                     <div style={{ marginBottom: 16 }} />
                     <ReactECharts option={item.genChart && JSON.parse(item.genChart)} />
                   </>
@@ -144,9 +160,38 @@ const MyChartPage: React.FC = () => {
                     />
                   </>
                 }
+
+                <Modal title="提示" open={isModalOpen} onOk={handleOk} onCancel={handleCancel}>
+                  <p>是否删除这张图表？</p>
+                </Modal>
+
+                <Row justify="end">
+                  <Col span={4}></Col>
+                  <Col span={4}></Col>
+                  <Col span={4}></Col>
+                  <Col span={4}>
+                    <Tooltip title="删除该图表">
+                      <Button
+                        shape="circle"
+                        danger icon={<DeleteOutlined />}
+                        onClick={() => {
+                            // 弹出确认对话框
+                            showModal();
+                            // 删除图片
+                            deleteChartUsingPOST({id: item.id})
+                            // 刷新页面
+                            loadData();
+                          }
+                        }
+                      />
+                    </Tooltip>
+                  </Col>
+                </Row>
               </>
+
             </Card>
           </List.Item>
+
         )}
       />
     </div>

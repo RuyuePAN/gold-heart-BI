@@ -81,10 +81,15 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     ],
     links: isDev
       ? [
-          <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
+          // <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
+          //   <LinkOutlined />
+          //   <span>OpenAPI 文档</span>
+          // </Link>,
+
+          <a href ="https://www.ruyuepan.asia/bi/" target="_blank" rel="noreferrer">
             <LinkOutlined />
-            <span>OpenAPI 文档</span>
-          </Link>,
+            <span>智能BI文档</span>
+          </a>,
         ]
       : [],
     menuHeaderRender: undefined,

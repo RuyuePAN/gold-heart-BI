@@ -11,61 +11,63 @@
  * @doc https://umijs.org/docs/guides/routes
  */
 export default [
-  {
-    path: '/user',
-    layout: false,
-    routes: [
-      {
-        name: 'login',
-        path: '/user/login',
-        component: './User/Login',
-      },
-    ],
-  },
-  // 将主页重定向到添加页面
-  {
-    path: "/", redirect: "/add_chart"
-  },
-  {
-    path: '/add_chart', name: "智能分析", icon: 'barChart', component: "./AddChart"
-  },
+    {
+        path: '/user',
+        layout: false,
+        routes: [
+          {
+            path: '/user', routes: [
+              {name: '登录', path: '/user/login', component: './User/Login'},
+              {name: '注册', path: '/user/register', component: './User/Register'}
+            ]
+          },
+            {component: './404'},
+        ],
+    },
+    // 将主页重定向到添加页面
+    {
+        path: "/", redirect: "/add_chart"
+    },
+    {
+        path: '/add_chart', name: "智能分析", icon: 'barChart', component: "./AddChart"
+    },
 
-  {
-    path: '/add_chart_async', name: "提交分析任务", icon: 'barChart', component: "./AddChartAsync"
-  },
-  {
-    path: '/my_chart', name: "我的图表", icon: 'pieChart', component: "./MyChart"
-  },
-  {
-    path: '/welcome',
-    name: 'welcome',
-    icon: 'smile',
-    component: './Welcome',
-  },
-  {
-    path: '/admin',
-    name: 'admin',
-    icon: 'crown',
-    access: 'canAdmin',
-    routes: [
-      {
+    {
+        path: '/add_chart_async', name: "提交分析任务", icon: 'barChart', component: "./AddChartAsync"
+    },
+    {
+        path: '/my_chart', name: "我的图表", icon: 'pieChart', component: "./MyChart"
+    },
+    // {
+    //     path: '/welcome',
+    //     name: 'welcome',
+    //     icon: 'smile',
+    //     component: './Welcome',
+    // },
+    {
         path: '/admin',
-        redirect: '/admin/sub-page',
-      },
-      {
-        path: '/admin/sub-page',
-        name: 'sub-page',
-        component: './Admin',
-      },
-    ],
-  },
-  {
-    path: '/',
-    redirect: '/welcome',
-  },
-  {
-    path: '*',
-    layout: false,
-    component: './404',
-  },
+        name: 'admin',
+        icon: 'crown',
+        access: 'canAdmin',
+        routes: [
+            {
+                path: '/admin',
+                redirect: '/admin/sub-page',
+            },
+            {
+                path: '/admin/sub-page',
+                name: 'sub-page',
+                component: './Admin',
+            },
+        ],
+    },
+    {
+        path: '/',
+        redirect: '/welcome',
+    },
+    {
+        path: '*',
+        layout: false,
+        component: './404',
+    },
 ];

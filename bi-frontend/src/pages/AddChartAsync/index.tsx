@@ -8,7 +8,11 @@ import {
   Upload,
 } from 'antd';
 import TextArea from "antd/es/input/TextArea";
-import {genChartByAiAsyncUsingPOST, genChartByAiUsingPOST} from '@/services/mybi/chartController';
+import {
+  genChartByAiAsyncMQUsingPOST,
+  genChartByAiAsyncUsingPOST,
+  genChartByAiUsingPOST
+} from '@/services/mybi/chartController';
 import {useForm} from "antd/lib/form/Form";
 
 /**
@@ -36,7 +40,8 @@ const AddChartAsync: React.FC = () => {
       file: undefined
     };
     try {
-      const res = await genChartByAiAsyncUsingPOST(params, {}, values.file.file.originFileObj)
+      // const res = await genChartByAiAsyncUsingPOST(params, {}, values.file.file.originFileObj)
+      const res = await genChartByAiAsyncMQUsingPOST(params, {}, values.file.file.originFileObj)
       console.log(res);
       if (!res.data) {
         message.error("分析失败")

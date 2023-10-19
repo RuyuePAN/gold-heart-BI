@@ -149,14 +149,14 @@ const Login: React.FC = () => {
           }}
           logo={<img alt="logo" src="/logo.svg"/>}
           title="智能BI"
-          subTitle={intl.formatMessage({id: '智能BI用人工智能助力数据分析'})}
+          subTitle={intl.formatMessage({id: '用人工智能助力数据分析'})}
           actions={[
-            <FormattedMessage
-              key="loginWith"
-              id="pages.login.loginWith"
-              defaultMessage="其他登录方式"
-            />,
-            <ActionIcons key="icons"/>,
+            // <FormattedMessage
+            //   key="loginWith"
+            //   id="pages.login.loginWith"
+            //   defaultMessage="其他登录方式"
+            // />,
+            // <ActionIcons key="icons"/>,
           ]}
           onFinish={async (values) => {
             await handleSubmit(values as API.UserLoginRequest);
@@ -232,7 +232,7 @@ const Login: React.FC = () => {
             <Link
               to="/user/register"
             >
-              注册
+              还没有账号？！这就注册！
             </Link>
           </div>
         </LoginForm>

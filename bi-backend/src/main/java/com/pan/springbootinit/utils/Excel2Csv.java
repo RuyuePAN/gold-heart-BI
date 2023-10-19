@@ -23,14 +23,6 @@ import java.util.stream.Collectors;
 @Slf4j
 public class Excel2Csv {
     public static String excelToCsv(@RequestPart("file") MultipartFile multipartFile){
-//        File file = null;
-//        try {
-//            file = ResourceUtils.getFile("classpath:网站数据.xlsx");
-//        } catch (FileNotFoundException e) {
-//            throw new RuntimeException(e);
-//        }
-
-
         List<Map<Integer, String>> list = null;
         try {
             list = EasyExcel.read(multipartFile.getInputStream())

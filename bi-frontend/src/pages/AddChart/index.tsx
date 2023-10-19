@@ -12,7 +12,6 @@ import {genChartByAiUsingPOST} from '@/services/mybi/chartController';
 import ReactECharts from 'echarts-for-react';
 import Row from 'antd/lib/row';
 import Spin from 'antd/lib/spin';
-
 /**
  * 添加图表页面
  * @constructor
@@ -48,12 +47,16 @@ const AddChart: React.FC = () => {
                 message.error("分析失败")
             } else {
                 message.success("分析成功");
-                const chartOption = JSON.parse(res.data.genChart ?? "")
-                if (!chartOption) {
-                    throw new Error("图表代码解析错误");
-                } else {
-                    setChart(res.data)
-                    setOption(chartOption)
+                try {
+                    const chartOption = JSON.parse(res.data.genChart ?? "")
+                    if (!chartOption) {
+                        throw new Error("图表代码解析错误");
+                    } else {
+                        setChart(res.data)
+                        setOption(chartOption)
+                    }
+                } catch (e) {
+                      throw new Error("图表代码解析错误");
                 }
             }
         } catch (e: any) {
@@ -155,7 +158,9 @@ const AddChart: React.FC = () => {
                     <Divider />
                     <Card title="可视化图表">
                             {
-                                option ? <ReactECharts option={option}></ReactECharts> : <div>请先在左侧点击提交</div>
+                                // option ? <ReactECharts option={option}></ReactECharts> : <div>请先在左侧点击提交</div>
+                              option ? <ReactECharts option={option}></ReactECharts> : <div>请先在左侧点击提交</div>
+
                             }
                         <Spin spinning={submitting} />
                     </Card>

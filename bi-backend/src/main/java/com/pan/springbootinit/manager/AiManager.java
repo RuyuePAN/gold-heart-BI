@@ -4,6 +4,7 @@ import com.pan.springbootinit.api.BceClient;
 import com.pan.springbootinit.common.ErrorCode;
 import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.model.dto.chart.BiResponse;
+import com.pan.springbootinit.model.entity.Chart;
 import com.squareup.okhttp.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -42,7 +43,6 @@ public class AiManager {
 
     /**
      * 拆分接口返回的结果 BiResponse
-     * TODO 增加人设
      * @return
      */
     public BiResponse getChatResult(String res) throws Exception{

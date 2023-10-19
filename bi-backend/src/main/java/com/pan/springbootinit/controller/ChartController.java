@@ -471,13 +471,9 @@ public class ChartController {
         chart.setStatus("wait");            // TODO：设置为枚举值
         chart.setUserId(loginUser.getId());
         boolean saveResult = chartService.save(chart);
-        if (!saveResult) {
-            handleChartUpdateError(chart.getId(), "保存图表状态失败");
-        }
-
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
         long newChartId = chart.getId();
         biMessageProducer.sendMessage(String.valueOf(newChartId));
-
         BiResponse biResponse = new BiResponse();
         biResponse.setChartId(newChartId);
         return ResultUtils.success(biResponse);

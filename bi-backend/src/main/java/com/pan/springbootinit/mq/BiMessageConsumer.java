@@ -1,6 +1,5 @@
 package com.pan.springbootinit.mq;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.pan.springbootinit.common.ErrorCode;
 import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.manager.AiManager;
@@ -8,7 +7,6 @@ import com.pan.springbootinit.model.dto.chart.BiResponse;
 import com.pan.springbootinit.model.entity.Chart;
 import com.pan.springbootinit.service.ChartService;
 import com.rabbitmq.client.Channel;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -17,6 +15,7 @@ import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
+import java.io.IOException;
 
 /**
  * @ClassName MessageConsumer
@@ -33,9 +32,8 @@ public class BiMessageConsumer {
     @Resource
     private AiManager aiManager;
 
-    @SneakyThrows       // 帮助消除异常
     @RabbitListener(queues = {BiMqConstant.BI_QUEUE_NAME}, ackMode = "MANUAL")
-    public void receiveMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+    public void receiveMessage(String message, Channel channel, @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) throws IOException {
         log.info("receiveMessage message = {}", message);
         if (StringUtils.isBlank(message)) {
             // 如果为空，则拒绝消息
@@ -56,6 +54,7 @@ public class BiMessageConsumer {
         // 如果图表状态更改失败
         if(!b) {
             handleChartUpdateError(chart.getId(), "更新图表状态执行中失败");
+            return;
         }
 
         String chatMessage = aiManager.buildChatMessage(chart.getGoal(), chart.getChartData(), chart.getChartType());
@@ -72,10 +71,12 @@ public class BiMessageConsumer {
             updateChart.setGenResult(biResponse.getGenResult());
         } catch (Exception e) {
             handleChartUpdateError(chart.getId(), "AI响应错误");
+            return;
         }
         boolean updateResult = chartService.updateById(updateChart);
         if (!updateResult) {
             handleChartUpdateError(chart.getId(), "更新图表状态失败");
+            return;
         }
         // 消息确认
         channel.basicAck(deliveryTag, false);

@@ -9,13 +9,17 @@ import com.pan.springbootinit.exception.BusinessException;
 import com.pan.springbootinit.model.dto.chart.BceAccessTokenResponse;
 import com.pan.springbootinit.model.dto.chart.BceResponse;
 import com.pan.springbootinit.model.dto.chart.BiResponse;
+import com.pan.springbootinit.service.ChartService;
+import com.pan.springbootinit.service.impl.ChartServiceImpl;
 import com.squareup.okhttp.*;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
-
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 
@@ -28,10 +32,12 @@ import java.util.concurrent.TimeUnit;
 @Configuration
 @ConfigurationProperties(prefix="pan.bce")
 @Data
+@Slf4j
 public class BceClient {
     private String apiKey;
     private String secretKey;
     private String accessToken;
+    private ChartService chartService = new ChartServiceImpl();
 
     static final OkHttpClient HTTP_CLIENT = new OkHttpClient();
 
@@ -129,16 +135,31 @@ public class BceClient {
 
     /**
      * 拆分接口返回的结果 BiResponse
-     * TODO 增加人设
      * @return
      */
-    public BiResponse getChatResult(String res) throws Exception{
+    public BiResponse getChatResult(String res) throws Exception {
         String[] splits = res.split("```");
         BiResponse biResponse = new BiResponse();
         // biResponse.setGenChart("option = " + splits[1].substring(splits[1].indexOf("{")));
-        biResponse.setGenChart(splits[1].substring(splits[1].indexOf("{")));
-        if (splits[2].contains("}"))   biResponse.setGenResult(splits[2].substring(splits[2].indexOf("}") + 3));
-        else biResponse.setGenResult(splits[2]);
+        // 验证代码是否正确，不正确的话统一抛出异常
+        // 可能会在代码段之前生成一段汉字
+        int codeIndex = 0;
+        int descriptionIndex = 1;
+        if (splits.length == 3) {
+            codeIndex++;
+            descriptionIndex++;
+        }
+        String chartCode = splits[codeIndex].substring(splits[codeIndex].indexOf("{"));
+        // 如果还配置了"option"字段
+        if (chartCode.contains("option"))   chartCode = chartCode.substring(chartCode.indexOf(": ") + 1);
+        // TODO: 过滤掉不属于ECharts的字段
+        Set<String> set = new HashSet<>();
+
+        // JSONUtil.parseArray(chartCode);
+        JSONUtil.parseObj(chartCode);
+        biResponse.setGenChart(chartCode);
+        if (splits[descriptionIndex].contains("}"))   biResponse.setGenResult(splits[descriptionIndex].substring(splits[descriptionIndex].indexOf("}") + 3));
+        else biResponse.setGenResult(splits[descriptionIndex]);
         return biResponse;
     }
 }
